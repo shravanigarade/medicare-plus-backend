@@ -1,3 +1,4 @@
+
 import Appointment from '../models/Appointment.js';
 
 // Create new appointment (booking)
@@ -90,6 +91,54 @@ export const updateAppointmentStatus = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: 'Server error',
+      error: error.message,
+    });
+  }
+};
+
+// Get doctor-wise reports
+export const getDoctorReports = async (req, res) => {
+  try {
+    const appointments = await Appointment.find();
+
+    const reports = {};
+
+    appointments.forEach((appointment) => {
+      const doctor = appointment.doctorName || 'Unknown Doctor';
+
+      if (!reports[doctor]) {
+        reports[doctor] = {
+          doctorName: doctor,
+          totalAppointments: 0,
+          uniquePatients: new Set(),
+          completedVisits: 0,
+        };
+      }
+
+      reports[doctor].totalAppointments += 1;
+
+      if (appointment.patientId) {
+        reports[doctor].uniquePatients.add(
+          appointment.patientId.toString()
+        );
+      }
+
+      if (appointment.status === 'completed') {
+        reports[doctor].completedVisits += 1;
+      }
+    });
+
+    const result = Object.values(reports).map((report) => ({
+      doctorName: report.doctorName,
+      totalAppointments: report.totalAppointments,
+      uniquePatients: report.uniquePatients.size,
+      completedVisits: report.completedVisits,
+    }));
+
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(500).json({
+      message: 'Failed to generate doctor reports',
       error: error.message,
     });
   }
